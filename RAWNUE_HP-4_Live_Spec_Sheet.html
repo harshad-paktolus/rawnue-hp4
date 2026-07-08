@@ -1,0 +1,523 @@
+<!-- RAWNUE Energy — HP-4 LIVE Spec Sheet. Static, hostable. Auto-saves to localStorage + version snapshots every 2 min. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAWNUE Energy — HP-4 Live Spec Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#F4F6F3;--card:#FFFFFF;--ink:#20241F;--ink-soft:#5B615A;
+    --line:#DCE0DA;--line-soft:#E9ECE6;--cocoa:#5A3826;--cocoa-tint:#F0E7E1;
+    --ice:#1E7F6B;--ice-tint:#E1F0EA;--warn:#A8571C;--warn-tint:#F7ECDF;
+    --stop:#9E2B2B;--stop-tint:#F6E4E2;--r:12px;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    font-size:15px;line-height:1.55;padding:0 14px 80px}
+  .wrap{max-width:640px;margin:0 auto}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;line-height:1.15;margin:0}
+  .mono{font-family:var(--mono)}
+
+  /* Save bar (sticky) */
+  .savebar{position:sticky;top:0;z-index:20;background:var(--paper);
+    padding:10px 0 8px;margin-bottom:6px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line)}
+  .status{display:flex;align-items:center;gap:7px;font-family:var(--mono);
+    font-size:11.5px;color:var(--ink-soft);flex:1 1 auto;min-width:150px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--ice);flex:none;
+    box-shadow:0 0 0 0 rgba(30,127,107,.5)}
+  .dot.saving{background:var(--warn);animation:pulse 1s ease-out infinite}
+  .dot.err{background:var(--stop)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(168,87,28,.5)}100%{box-shadow:0 0 0 7px rgba(168,87,28,0)}}
+  .savebar button{font-family:var(--mono);font-size:12px;font-weight:500;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:8px 11px;border-radius:8px;cursor:pointer}
+  .savebar button:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  .savebar .primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  header{border:1.5px solid var(--ink);border-radius:var(--r);
+    background:var(--card);padding:18px 16px;margin-bottom:14px;position:relative;overflow:hidden}
+  header::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;
+    background:linear-gradient(90deg,var(--cocoa) 0 55%,var(--ice) 55% 100%)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--ice);font-weight:500;margin-top:4px}
+  h1{font-size:27px;font-weight:700;letter-spacing:-.01em;margin:6px 0 2px}
+  h1 .lead{color:var(--cocoa)}
+  .subhead{color:var(--ink-soft);font-size:14px}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;padding-top:12px;
+    border-top:1px solid var(--line);font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+  .meta b{color:var(--ink);font-weight:500}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    padding:16px 15px;margin-bottom:12px}
+  .sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .sec-no{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--ice);
+    border:1px solid var(--ice);border-radius:6px;padding:2px 7px;flex:none}
+  h2{font-size:17px;font-weight:600}
+  .sec-note{color:var(--ink-soft);font-size:13.5px;margin:2px 0 14px}
+
+  .chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .chip{background:var(--ice-tint);border-radius:9px;padding:9px 11px}
+  .chip .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ice);font-weight:500}
+  .chip .v{font-family:'Space Grotesk';font-weight:600;font-size:15px;margin-top:2px}
+  .chip.cocoa{background:var(--cocoa-tint)}.chip.cocoa .k{color:var(--cocoa)}
+
+  .batch-bar{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin-bottom:12px}
+  .batch-bar .lab{font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px}
+  .btns{display:flex;flex-wrap:wrap;gap:6px}
+  .btns button{font-family:var(--mono);font-size:13px;font-weight:500;
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    padding:8px 12px;border-radius:8px;cursor:pointer;flex:1 1 auto;min-width:56px}
+  .btns button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btns button:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  .custom{display:flex;align-items:center;gap:8px;margin-top:9px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+  .custom input{font-family:var(--mono);font-size:14px;width:82px;padding:7px 9px;
+    border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+  .custom input:focus-visible{outline:2px solid var(--ice);outline-offset:1px}
+
+  .frow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .frow:last-of-type{border-bottom:0}
+  .fname{font-weight:500}
+  .ftag{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);display:block;font-weight:400}
+  .famt{font-family:var(--mono);font-weight:700;text-align:right;white-space:nowrap;align-self:center}
+  .bar{grid-column:1 / -1;height:5px;border-radius:3px;background:var(--line-soft);overflow:hidden;margin-top:5px}
+  .bar > i{display:block;height:100%;background:var(--cocoa);border-radius:3px}
+  .ftotal{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;
+    border-top:1.5px solid var(--ink);font-family:'Space Grotesk';font-weight:600}
+  .ftotal .famt{font-size:16px}
+  .check{color:var(--ice);font-family:var(--mono);font-size:12px;font-weight:700}
+
+  .tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+  .tbl th,.tbl td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line-soft)}
+  .tbl th{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);font-weight:500}
+  .tbl td.num,.tbl th.num{text-align:right;font-family:var(--mono);font-weight:500}
+  .tbl tr:last-child td{border-bottom:0}
+  .hit{color:var(--ice);font-weight:700}
+
+  ol.steps{list-style:none;counter-reset:s;margin:0;padding:0}
+  ol.steps li{counter-increment:s;position:relative;padding:0 0 12px 34px;font-size:14px}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;font-family:var(--mono);
+    font-size:12px;font-weight:700;color:#fff;background:var(--ice);width:23px;height:23px;
+    border-radius:50%;display:grid;place-items:center}
+  ol.steps li:last-child{padding-bottom:0}
+  ol.steps b{font-weight:600}
+
+  .session{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+  .fld{display:flex;flex-direction:column;gap:4px}
+  .fld label{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
+  .fld input{font-family:'Inter';font-size:14px;padding:9px 10px;border:1px solid var(--line);
+    border-radius:8px;background:var(--card);color:var(--ink)}
+  .fld input:focus-visible{outline:2px solid var(--ice);outline-offset:1px}
+  .seg{display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{flex:1;font-family:var(--mono);font-size:13px;padding:9px 0;border:0;background:var(--card);color:var(--ink-soft);cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--cocoa);color:#fff}
+  .seg button:focus-visible{outline:2px solid var(--ice);outline-offset:-2px}
+
+  .score{display:flex;flex-direction:column;gap:11px}
+  .srow .slab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+  .srow .slab span:last-child{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+  .scale{display:flex;gap:5px}
+  .scale label{flex:1;cursor:pointer;position:relative}
+  .scale input{position:absolute;opacity:0;pointer-events:none}
+  .scale label span{display:block;text-align:center;font-family:var(--mono);font-size:13px;
+    padding:8px 0;border:1px solid var(--line);border-radius:7px;color:var(--ink-soft)}
+  .scale input:checked + span{background:var(--cocoa);color:#fff;border-color:var(--cocoa)}
+  .scale input:focus-visible + span{outline:2px solid var(--ice);outline-offset:2px}
+  .notes-in{width:100%;margin-top:12px;min-height:64px;resize:vertical;font-family:'Inter';font-size:14px;
+    padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink)}
+  .notes-in:focus-visible{outline:2px solid var(--ice);outline-offset:1px}
+
+  ul.checklist{list-style:none;margin:0;padding:0}
+  ul.checklist li{display:flex;gap:11px;padding:10px 0;border-bottom:1px solid var(--line-soft);align-items:flex-start}
+  ul.checklist li:last-child{border-bottom:0}
+  ul.checklist input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:var(--ice);cursor:pointer}
+  ul.checklist .c-main{font-weight:500;font-size:14px}
+  ul.checklist .c-sub{font-size:12.5px;color:var(--ink-soft)}
+  .prio{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+    font-weight:700;padding:2px 6px;border-radius:5px;margin-left:6px;vertical-align:middle;background:var(--stop-tint);color:var(--stop)}
+
+  /* Versions */
+  .vlist{display:flex;flex-direction:column;gap:7px;max-height:280px;overflow:auto}
+  .vitem{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--paper);
+    border:1px solid var(--line);border-radius:9px}
+  .vitem .vt{font-family:var(--mono);font-size:12px;flex:1}
+  .vitem .vmeta{font-size:11px;color:var(--ink-soft)}
+  .vitem button{font-family:var(--mono);font-size:11.5px;padding:6px 10px;border:1px solid var(--ice);
+    background:var(--ice-tint);color:var(--ice);border-radius:7px;cursor:pointer;flex:none}
+  .vitem button:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  .vempty{font-size:13px;color:var(--ink-soft);padding:6px 0}
+
+  .claim-grid{display:flex;flex-direction:column;gap:8px}
+  .claim{display:flex;gap:10px;padding:10px 11px;border-radius:9px;font-size:13.5px;align-items:flex-start}
+  .claim.safe{background:var(--ice-tint)}.claim.avoid{background:var(--stop-tint)}
+  .claim .mk{font-family:var(--mono);font-weight:700;flex:none}
+  .claim.safe .mk{color:var(--ice)}.claim.avoid .mk{color:var(--stop)}
+  .claim b{font-weight:600}
+  .flag{border-left:3px solid var(--warn);background:var(--warn-tint);padding:10px 12px;
+    border-radius:0 9px 9px 0;margin-bottom:8px;font-size:13.5px}
+  .flag:last-child{margin-bottom:0}
+  .flag b{font-weight:600;color:var(--warn)}
+  .flag.stop{border-color:var(--stop);background:var(--stop-tint)}.flag.stop b{color:var(--stop)}
+
+  .disc{font-size:12px;color:var(--ink-soft);line-height:1.5;border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+
+  @media (min-width:560px){.chips{grid-template-columns:1fr 1fr 1fr 1fr}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  @media print{.savebar{display:none}#sec-versions{display:none}}
+</style>
+
+<div class="wrap">
+
+  <div class="savebar">
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Loading…</span></div>
+    <button id="btnVersions">Versions</button>
+    <button id="btnExport" class="primary">Backup ↓</button>
+    <button id="btnImport">Restore ↑</button>
+    <input type="file" id="fileImport" accept="application/json" hidden>
+  </div>
+
+  <header>
+    <div class="eyebrow">R&D Formulation Spec · Live · Confidential</div>
+    <h1><span class="lead">RAWNUE Energy</span> — HP-4</h1>
+    <div class="subhead">Iced Chocolate · plant &amp; fermentation-based ready-to-mix · Version 1</div>
+    <div class="meta">
+      <span>SPEC ID <b>RN-HP4-V1</b></span>
+      <span>SERVING <b>40 g</b></span>
+      <span>AUTO-SAVE <b>every 2 min</b></span>
+      <span>DATE <b>08 Jul 2026</b></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">01</span><h2>Snapshot</h2></div>
+    <div class="chips">
+      <div class="chip cocoa"><div class="k">Serving</div><div class="v">40 g</div></div>
+      <div class="chip"><div class="k">Protein target</div><div class="v">≥ 22 g*</div></div>
+      <div class="chip cocoa"><div class="k">Sweetener</div><div class="v">Monk + Reb M</div></div>
+      <div class="chip"><div class="k">Mix base</div><div class="v">Cold milk / water</div></div>
+    </div>
+    <p class="sec-note" style="margin:12px 0 0">*Provisional. Protein is <b>not final</b> until the finished-blend lab assay confirms it.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">02</span><h2>Formula &amp; batch scaling</h2></div>
+    <p class="sec-note">Per-serving amounts, live-scaled to your batch size.</p>
+    <div class="batch-bar">
+      <div class="lab">Batch size — servings</div>
+      <div class="btns" id="btns" role="group" aria-label="Batch size in servings">
+        <button data-n="1" aria-pressed="true">1</button>
+        <button data-n="5">5</button><button data-n="10">10</button><button data-n="25">25</button>
+        <button data-n="50">50</button><button data-n="100">100</button>
+      </div>
+      <div class="custom">
+        <label for="custN">Custom</label>
+        <input id="custN" type="number" min="1" step="1" inputmode="numeric" placeholder="servings">
+        <span id="batchWt"></span>
+      </div>
+    </div>
+    <div id="formula"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">03</span><h2>Protein margin check</h2></div>
+    <p class="sec-note">Yeast fixed at 28 g/serving. HP-4 clears 22 g even at worst-case 75% assay.</p>
+    <table class="tbl">
+      <thead><tr><th>Yeast assay</th><th class="num">Yeast only</th><th class="num">+ cocoa/oat</th><th class="num">Est. total</th></tr></thead>
+      <tbody>
+        <tr><td>75%</td><td class="num">21.0 g</td><td class="num">~1.6 g</td><td class="num hit">~22.6 g</td></tr>
+        <tr><td>80%</td><td class="num">22.4 g</td><td class="num">~1.6 g</td><td class="num hit">~24.0 g</td></tr>
+        <tr><td>85%</td><td class="num">23.8 g</td><td class="num">~1.6 g</td><td class="num hit">~25.4 g</td></tr>
+      </tbody>
+    </table>
+    <p class="sec-note" style="margin:12px 0 0">Yeast has nucleic-acid nitrogen — crude protein (N×6.25) can overstate true protein. Ask the lab for method + N-factor.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">04</span><h2>R&amp;D mixing protocol</h2></div>
+    <ol class="steps">
+      <li><b>Master-batch first.</b> ≥10 servings, tumble/sieve-blend 2–3× so micro-ingredients distribute. You can't dose 0.05 g Reb M per cup.</li>
+      <li><b>Portion 40 g</b> per test cup.</li>
+      <li><b>Two bases in parallel:</b> 40 g into 200–250 ml cold milk, and 40 g into cold water.</li>
+      <li><b>Shake</b> 20–30 s with a mixing ball or frother.</li>
+      <li><b>Rest 1–2 min to hydrate</b>, then re-shake. Cuts the powdery perception.</li>
+      <li><b>Serve 5–8 °C over ice.</b> Test 200 ml vs 250 ml.</li>
+      <li><b>Blind panel of 3–5.</b> Benchmark HP-4 vs HP-2 (flavour) and HP-3 (texture).</li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">05</span><h2>Tasting scorecard</h2></div>
+    <p class="sec-note">Everything here auto-saves. Tap 1 (poor) → 5 (excellent). Watch the aftertaste line — the yeast note lingers.</p>
+    <div class="session">
+      <div class="fld"><label for="taster">Taster</label><input id="taster" placeholder="Name / initials"></div>
+      <div class="fld"><label for="ml">Volume (ml)</label><input id="ml" type="number" inputmode="numeric" placeholder="200 / 250"></div>
+      <div class="fld" style="grid-column:1 / -1"><label>Base</label>
+        <div class="seg" id="baseSeg" role="group" aria-label="Mixing base">
+          <button data-base="Milk" aria-pressed="true">Cold milk</button>
+          <button data-base="Water" aria-pressed="false">Cold water</button>
+        </div>
+      </div>
+    </div>
+    <div class="score" id="score"></div>
+    <textarea class="notes-in" id="notes" placeholder="Notes — off-notes, sediment at 5 min, foam, sweetness balance, milk vs water…"></textarea>
+  </section>
+
+  <section id="sec-versions">
+    <div class="sec-head"><span class="sec-no">06</span><h2>Version history</h2></div>
+    <p class="sec-note">A snapshot is kept every 2 min (only when something changed) and on exit. Last 60 kept. Restore any point below, or use <b>Backup ↓</b> for a file that survives cache-clears and moves between devices.</p>
+    <div class="vlist" id="vlist"></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">07</span><h2>Lab &amp; document checklist</h2></div>
+    <p class="sec-note">Run on the finished HP-4 blend unless noted. Nothing on a label until these are in hand.</p>
+    <ul class="checklist" id="checklist"></ul>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">08</span><h2>Claims — safe vs avoid</h2></div>
+    <div class="claim-grid">
+      <div class="claim safe"><span class="mk">OK</span><div><b>Vegan</b> · <b>No added refined sugar</b> · <b>Sweetened with stevia/monk fruit</b> — factual, once lab-confirmed &amp; monk-fruit status checked.</div></div>
+      <div class="claim safe"><span class="mk">OK</span><div><b>Protein claim matching the assay</b>, with margin. FSSAI "source of/high protein" only after the % energy check.</div></div>
+      <div class="claim avoid"><span class="mk">NO</span><div><b>"Natural flavour"</b> — vanilla is <b>nature-identical</b>.</div></div>
+      <div class="claim avoid"><span class="mk">NO</span><div><b>"Allergen-free / free from"</b> — lecithin shares a facility with soy &amp; milk. Use "may contain".</div></div>
+      <div class="claim avoid"><span class="mk">NO</span><div><b>Bare "plant-based"</b> — yeast is a fungus. Prefer <b>"vegan"</b> / <b>"plant &amp; fermentation-based"</b>.</div></div>
+      <div class="claim avoid"><span class="mk">NO</span><div><b>"Complete protein"/PDCAAS</b> without amino-acid data. No digestion, gut, energy, hormone, immunity, muscle, "clean"/"detox" claims.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">09</span><h2>Regulatory &amp; allergen flags</h2></div>
+    <div class="flag stop"><b>Monk fruit — verify approval.</b> Reb M/stevia are FSSAI-permitted; monk fruit/mogrosides do <b>not</b> have the same clear approval in India. Keep stevia (raw #12) as fallback.</div>
+    <div class="flag stop"><b>Product category unresolved.</b> Nutraceutical vs Proprietary Food changes ingredients, claims, label format. Settle with a regulatory consultant first.</div>
+    <div class="flag"><b>Allergen cross-contact.</b> Declare "may contain soy, milk". Oats → gluten cross-contact; no GF claim without certified GF oats + testing.</div>
+    <div class="flag"><b>Cocoa heavy metals.</b> Cadmium/lead — meet FSSAI limits; test.</div>
+    <div class="flag"><b>Labelling (2020).</b> Per serving &amp; per 100 g, added-sugars line, ingredients descending, green mark, FSSAI logo + licence no.</div>
+    <div class="flag"><b>Brand name.</b> "Energy" must read as brand, not a functional claim.</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-no">10</span><h2>Final recommendation</h2></div>
+    <p style="margin:0 0 10px;font-size:14px"><b>Test first:</b> lead with HP-4; run HP-2 (flavour) and HP-3 (texture) in the same blind panel.</p>
+    <p style="margin:0 0 10px;font-size:14px"><b>Lab (finished blend):</b> proximate + protein method/N-factor, total &amp; added sugars, heavy metals (Cd/Pb), full micro, water activity, stability study. Push yeast supplier for protein % + amino-acid profile.</p>
+    <p style="margin:0;font-size:14px"><b>Hold every claim</b> until the finished-blend report is in hand. Add "may contain soy, milk" now.</p>
+  </section>
+
+  <div class="disc">
+    R&amp;D working document. Data auto-saves to this browser's local storage and is <b>per-device</b> — use <b>Backup ↓</b> for a real off-device copy. Figures are estimates pending lab confirmation. No medical/digestive/gut/hormonal/clinical claims are made or implied; none should be made without FSSAI-acceptable substantiation. Verify regulatory points with a qualified consultant.
+  </div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+var STORE_KEY = "rawnue_hp4_current_v1";
+var VERS_KEY  = "rawnue_hp4_versions_v1";
+var SNAP_MS   = 120000;   // 2 minutes
+var MAX_VERS  = 60;
+
+/* ---- OPTIONAL cloud backend hook (Supabase) ----
+   For a shared, cross-device panel, create a Supabase project and fill these,
+   then uncomment the SDK <script> + the cloudSave() calls. You paste your own
+   anon key — it stays in your hosted file, never handled here.
+var SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+var SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+------------------------------------------------- */
+
+var storageOK = true;
+try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); }
+catch(e){ storageOK = false; }
+
+/* ============ FORMULA ============ */
+var ING=[
+ {name:"Fermented yeast protein",tag:"protein base",g:28.00},
+ {name:"Alkalized cocoa powder",tag:"Dutch / dark",g:5.50},
+ {name:"Oat flour powder",tag:"body / smoothness",g:3.64},
+ {name:"Sunflower lecithin",tag:"wettability",g:1.20},
+ {name:"Vanilla flavour",tag:"nature-identical",g:1.10},
+ {name:"Monk fruit extract 25%",tag:"sweetener (verify status)",g:0.28},
+ {name:"Rock salt",tag:"flavour rounding",g:0.18},
+ {name:"Cinnamon powder",tag:"warmth",g:0.05},
+ {name:"Reb M 95%",tag:"sweetener",g:0.05}
+];
+var MAX=28.00, PERSERV=40.00;
+function fmt(v){ if(v>=1000)return (v/1000).toFixed(v%1000===0?0:2)+" kg";
+  if(v>=100)return v.toFixed(1)+" g"; return v.toFixed(2)+" g"; }
+function renderFormula(n){
+  var h=""; ING.forEach(function(x){var amt=x.g*n,pct=(x.g/MAX)*100;
+    h+='<div class="frow"><div class="fname">'+x.name+'<span class="ftag">'+x.tag+'</span></div>'
+      +'<div class="famt">'+fmt(amt)+'</div><div class="bar"><i style="width:'+pct.toFixed(1)+'%"></i></div></div>';});
+  h+='<div class="ftotal"><span>Total <span class="check">✓ balances</span></span><span class="famt">'+fmt(PERSERV*n)+'</span></div>';
+  document.getElementById("formula").innerHTML=h;
+  document.getElementById("batchWt").textContent="= batch "+fmt(PERSERV*n)+" ("+n+" × 40 g)";
+}
+
+/* ============ BUILD DYNAMIC UI ============ */
+var ATTRS=[
+ {k:"disp",label:"Dispersibility",hint:"lumps? sediment?"},
+ {k:"mouth",label:"Mouthfeel",hint:"chalky → smooth"},
+ {k:"choc",label:"Chocolate intensity",hint:"as iced drink"},
+ {k:"sweet",label:"Sweetness balance",hint:"under-/over-"},
+ {k:"after",label:"Aftertaste",hint:"yeast lingering?"},
+ {k:"overall",label:"Overall liking",hint:""}
+];
+var sc=document.getElementById("score");
+ATTRS.forEach(function(a){var r='<div class="srow"><div class="slab"><span>'+a.label+'</span><span>'+(a.hint||"")+'</span></div><div class="scale">';
+  for(var i=1;i<=5;i++)r+='<label><input type="radio" name="sc_'+a.k+'" value="'+i+'"><span>'+i+'</span></label>';
+  r+='</div></div>'; sc.insertAdjacentHTML("beforeend",r);});
+
+var TESTS=[
+ {m:"Finished-blend proximate analysis",s:"Protein (method + N-factor), fat, carbs, total sugars, fibre, energy, moisture, ash",p1:true},
+ {m:"Total & added sugars",s:"Substantiates 'no added sugar'"},
+ {m:"Heavy metals — Cd & Pb",s:"Cocoa is a known carrier; meet FSSAI limits",p1:true},
+ {m:"Microbiology (finished blend)",s:"TPC, yeast/mould, coliforms, E. coli, Salmonella, Staph"},
+ {m:"Stability study",s:"Accelerated + real-time: moisture, caking, rancidity (PV), flavour, micro, water activity"},
+ {m:"Allergen testing / declaration",s:"Soy, milk, gluten — 'may contain soy, milk'"},
+ {m:"Yeast raw-material data",s:"Actual protein % + amino-acid profile from supplier",p1:true},
+ {m:"Product category decision",s:"Nutraceutical vs Proprietary Food — with regulatory consultant"}
+];
+var cl=document.getElementById("checklist");
+TESTS.forEach(function(t,i){var b=t.p1?' <span class="prio">Priority</span>':'';
+  cl.insertAdjacentHTML("beforeend",'<li><input type="checkbox" id="chk'+i+'"><label for="chk'+i+'"><span class="c-main">'+t.m+b+'</span><span class="c-sub">'+t.s+'</span></label></li>');});
+
+/* ============ STATE <-> DOM ============ */
+var state={batchN:1,base:"Milk",taster:"",ml:"",scores:{},checklist:{},notes:"",updatedAt:null};
+
+function collect(){
+  state.taster=document.getElementById("taster").value;
+  state.ml=document.getElementById("ml").value;
+  state.notes=document.getElementById("notes").value;
+  state.scores={};
+  ATTRS.forEach(function(a){var el=document.querySelector('input[name="sc_'+a.k+'"]:checked');state.scores[a.k]=el?+el.value:null;});
+  state.checklist={};
+  TESTS.forEach(function(t,i){state.checklist[i]=document.getElementById("chk"+i).checked;});
+  return state;
+}
+function apply(s){
+  if(!s)return;
+  state=Object.assign(state,s);
+  document.getElementById("taster").value=s.taster||"";
+  document.getElementById("ml").value=s.ml||"";
+  document.getElementById("notes").value=s.notes||"";
+  ATTRS.forEach(function(a){var v=(s.scores||{})[a.k];
+    var el=document.querySelector('input[name="sc_'+a.k+'"][value="'+v+'"]'); if(el)el.checked=true;});
+  TESTS.forEach(function(t,i){document.getElementById("chk"+i).checked=!!(s.checklist||{})[i];});
+  setBase(s.base||"Milk"); setBatch(s.batchN||1,false);
+}
+
+/* ============ PERSISTENCE ============ */
+var dot=document.getElementById("dot"), statusText=document.getElementById("statusText");
+function hhmm(t){var d=new Date(t);return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);}
+function versions(){ try{return JSON.parse(localStorage.getItem(VERS_KEY))||[];}catch(e){return[];} }
+function setStatus(){
+  var v=versions().length;
+  if(!storageOK){dot.className="dot err";statusText.textContent="Preview mode — saving starts once hosted";return;}
+  dot.className="dot";
+  statusText.textContent=(state.updatedAt?"Saved "+hhmm(state.updatedAt):"Ready")+" · "+v+" version"+(v===1?"":"s");
+}
+var saveTimer=null;
+function save(){
+  collect(); state.updatedAt=Date.now();
+  if(!storageOK){setStatus();return;}
+  dot.className="dot saving";
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify(state)); }catch(e){ dot.className="dot err"; statusText.textContent="Save failed — storage full"; return; }
+  // cloudSave(state);   // <-- uncomment when Supabase configured
+  setTimeout(setStatus,250);
+}
+function debouncedSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(save,700); }
+
+var lastSnapStr="";
+function snapshot(){
+  if(!storageOK)return;
+  collect(); var str=JSON.stringify(state.scores)+state.notes+JSON.stringify(state.checklist)+state.taster+state.ml+state.base+state.batchN;
+  if(str===lastSnapStr)return;               // nothing changed — skip
+  lastSnapStr=str;
+  var arr=versions();
+  arr.unshift({ts:Date.now(),data:JSON.parse(JSON.stringify(state))});
+  if(arr.length>MAX_VERS)arr=arr.slice(0,MAX_VERS);
+  try{ localStorage.setItem(VERS_KEY,JSON.stringify(arr)); }catch(e){}
+  renderVersions(); setStatus();
+}
+function renderVersions(){
+  var arr=versions(), host=document.getElementById("vlist");
+  if(!arr.length){host.innerHTML='<div class="vempty">No snapshots yet — the first is taken 2 min after your first edit.</div>';return;}
+  host.innerHTML=arr.map(function(v,i){
+    var s=v.data, filled=Object.values(s.scores||{}).filter(Boolean).length;
+    var d=new Date(v.ts), label=d.toLocaleDateString()+" "+hhmm(v.ts);
+    return '<div class="vitem"><div class="vt">'+label+'<div class="vmeta">'
+      +(s.taster||"—")+" · "+filled+"/6 scores · "+(s.base||"")+'</div></div>'
+      +'<button data-i="'+i+'">Restore</button></div>';
+  }).join("");
+}
+
+/* ============ CONTROLS ============ */
+function setBatch(n,persist){
+  Array.prototype.forEach.call(document.querySelectorAll("#btns button"),function(b){b.setAttribute("aria-pressed",+b.dataset.n===n?"true":"false");});
+  state.batchN=n; renderFormula(n); if(persist)debouncedSave();
+}
+document.getElementById("btns").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;
+  document.getElementById("custN").value=""; setBatch(+b.dataset.n,true);});
+document.getElementById("custN").addEventListener("input",function(){var n=parseInt(this.value,10);
+  if(n>0){Array.prototype.forEach.call(document.querySelectorAll("#btns button"),function(b){b.setAttribute("aria-pressed","false");});
+    state.batchN=n;renderFormula(n);debouncedSave();} });
+
+function setBase(b){state.base=b;Array.prototype.forEach.call(document.querySelectorAll("#baseSeg button"),function(x){x.setAttribute("aria-pressed",x.dataset.base===b?"true":"false");});}
+document.getElementById("baseSeg").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;setBase(b.dataset.base);debouncedSave();});
+
+// any input change -> debounced save
+document.addEventListener("input",debouncedSave);
+document.addEventListener("change",debouncedSave);
+
+// restore from versions
+document.getElementById("vlist").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;
+  var arr=versions(),v=arr[+b.dataset.i]; if(!v)return;
+  if(confirm("Restore snapshot from "+new Date(v.ts).toLocaleString()+"? Current unsaved edits will be replaced (a new snapshot of the current state is kept).")){
+    snapshot(); apply(v.data); save();
+  }});
+
+/* ============ EXPORT / IMPORT ============ */
+function download(name,text,type){
+  var blob=new Blob([text],{type:type}),url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+document.getElementById("btnExport").addEventListener("click",function(){
+  collect();
+  var payload={spec:"RN-HP4-V1",exportedAt:new Date().toISOString(),current:state,versions:versions()};
+  var stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,"-");
+  // JSON = full backup
+  download("RAWNUE_HP4_backup_"+stamp+".json",JSON.stringify(payload,null,2),"application/json");
+  // CSV = scores, for the whole version trail + current
+  var rows=[["savedAt","taster","base","ml","batchN",...ATTRS.map(function(a){return a.k;}),"notes"]];
+  function row(s,ts){return [ts,s.taster||"",s.base||"",s.ml||"",s.batchN||"",...ATTRS.map(function(a){return (s.scores||{})[a.k]||"";}),(s.notes||"").replace(/[\r\n]+/g," ")];}
+  rows.push(row(state,new Date(state.updatedAt||Date.now()).toISOString()));
+  versions().forEach(function(v){rows.push(row(v.data,new Date(v.ts).toISOString()));});
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\n");
+  download("RAWNUE_HP4_scores_"+stamp+".csv",csv,"text/csv");
+});
+document.getElementById("btnImport").addEventListener("click",function(){document.getElementById("fileImport").click();});
+document.getElementById("fileImport").addEventListener("change",function(e){
+  var f=e.target.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){try{var p=JSON.parse(r.result);
+    if(p.versions&&storageOK)localStorage.setItem(VERS_KEY,JSON.stringify(p.versions));
+    apply(p.current||p); save(); renderVersions();
+    alert("Backup restored.");
+  }catch(err){alert("Couldn't read that file — expected a RAWNUE backup JSON.");}};
+  r.readAsText(f); e.target.value="";
+});
+document.getElementById("btnVersions").addEventListener("click",function(){
+  document.getElementById("sec-versions").scrollIntoView({behavior:"smooth",block:"start"});});
+
+/* ============ BOOT ============ */
+renderFormula(1); renderVersions();
+if(storageOK){ try{var saved=JSON.parse(localStorage.getItem(STORE_KEY)); if(saved)apply(saved);}catch(e){} }
+setStatus();
+setInterval(snapshot,SNAP_MS);                       // version snapshot every 2 min
+window.addEventListener("beforeunload",function(){ if(storageOK){save();snapshot();} }); // capture on exit
+</script>
