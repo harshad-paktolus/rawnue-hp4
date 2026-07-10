@@ -111,6 +111,10 @@
   ol.steps b{font-weight:600}
 
   .session{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+  .econ-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .econ-grid .fld input{font-family:var(--mono);font-size:14px}
+  .neg{color:var(--stop);font-weight:700}
+  .pos{color:var(--ice);font-weight:700}
   .fld{display:flex;flex-direction:column;gap:4px}
   .fld label{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft)}
   .fld input{font-family:'Inter';font-size:14px;padding:9px 10px;border:1px solid var(--line);
@@ -311,6 +315,18 @@
     <p style="margin:0;font-size:14px"><b>Hold every claim</b> until the finished-blend report is in hand. Add "may contain soy, milk" now.</p>
   </section>
 
+  <section id="sec-econ">
+    <div class="sec-head"><span class="sec-no">11</span><h2>Unit economics — live</h2></div>
+    <p class="sec-note">Defaults are <b>estimates</b> — replace with real supplier quotes as they land. Enter ingredient &amp; packaging costs <b>ex-GST</b> (you claim ITC). MRP is GST-inclusive. Everything auto-saves &amp; is included in Backup ↓.</p>
+    <div class="econ-grid" id="econGrid"></div>
+    <div class="chips" id="econChips" style="margin-top:14px"></div>
+    <table class="tbl" style="margin-top:14px">
+      <thead><tr><th>Channel</th><th class="num">Realized ₹ *</th><th class="num">Margin ₹/box</th><th class="num">Margin %</th></tr></thead>
+      <tbody id="econRows"></tbody>
+    </table>
+    <p class="sec-note" style="margin:12px 0 0">*Realized = what lands with you per 14-pack box, net of GST, channel fees &amp; shipping, before COGS. Offline assumes trade margin off MRP. Verify GST rate/HSN classification with your CA — proprietary food vs nutraceutical can differ.</p>
+  </section>
+
   <div class="disc">
     R&amp;D working document. Data auto-saves to this browser's local storage and is <b>per-device</b> — use <b>Backup ↓</b> for a real off-device copy. Figures are estimates pending lab confirmation. No medical/digestive/gut/hormonal/clinical claims are made or implied; none should be made without FSSAI-acceptable substantiation. Verify regulatory points with a qualified consultant.
   </div>
@@ -387,6 +403,62 @@ var cl=document.getElementById("checklist");
 TESTS.forEach(function(t,i){var b=t.p1?' <span class="prio">Priority</span>':'';
   cl.insertAdjacentHTML("beforeend",'<li><input type="checkbox" id="chk'+i+'"><label for="chk'+i+'"><span class="c-main">'+t.m+b+'</span><span class="c-sub">'+t.s+'</span></label></li>');});
 
+/* ============ UNIT ECONOMICS ============ */
+var ECON=[
+ {k:"yeast",label:"Yeast protein ₹/kg",def:1100},
+ {k:"cocoa",label:"Cocoa ₹/kg",def:550},
+ {k:"minor",label:"Minor ingredients ₹/serv",def:4,hint:"oat+lecithin+flavour+sweetener"},
+ {k:"film",label:"Sachet film+print ₹",def:4},
+ {k:"box",label:"Box+carton ₹ / 14-pack",def:30},
+ {k:"proc",label:"Processing ₹/sachet",def:3,hint:"blend, fill, QC, labour"},
+ {k:"waste",label:"Wastage %",def:5},
+ {k:"mrp",label:"MRP ₹ / 14-pack box",def:1299},
+ {k:"gst",label:"GST % (in MRP)",def:18},
+ {k:"ship",label:"D2C shipping ₹/box",def:80},
+ {k:"pay",label:"Payment gateway %",def:2.5},
+ {k:"ref",label:"Amazon referral %",def:13},
+ {k:"fba",label:"FBA fulfilment ₹/box",def:95},
+ {k:"trade",label:"Offline trade margin %",def:35}
+];
+var econGrid=document.getElementById("econGrid");
+ECON.forEach(function(e){
+  econGrid.insertAdjacentHTML("beforeend",
+    '<div class="fld"><label for="ec_'+e.k+'">'+e.label+'</label>'
+    +'<input id="ec_'+e.k+'" type="number" step="any" min="0" inputmode="decimal" value="'+e.def+'"'
+    +(e.hint?' title="'+e.hint+'"':'')+'></div>');
+});
+function ecv(k){var el=document.getElementById("ec_"+k),v=parseFloat(el.value);
+  if(!(v>=0)){var d=0;ECON.forEach(function(e){if(e.k===k)d=e.def;});return d;} return v;}
+function rupee(v){var neg=v<0,a=Math.abs(v);
+  var s=a>=100?Math.round(a).toLocaleString("en-IN"):a.toFixed(1);
+  return (neg?"−₹":"₹")+s;}
+function renderEcon(){
+  var yeastG=28.0, cocoaG=5.5;
+  var ingr=(yeastG/1000)*ecv("yeast")+(cocoaG/1000)*ecv("cocoa")+ecv("minor");
+  var perSachet=(ingr+ecv("film"))*(1+ecv("waste")/100)+ecv("proc");
+  var perBox=perSachet*14+ecv("box");
+  var mrp=ecv("mrp"), g=ecv("gst")/100, exGst=mrp/(1+g);
+  var perGram=mrp/(14*22);
+  // channels: realized (net of GST + channel costs), then margin vs COGS
+  var d2c=exGst-mrp*(ecv("pay")/100)-ecv("ship");
+  var amz=exGst-mrp*(ecv("ref")/100)-ecv("fba");
+  var off=(mrp*(1-ecv("trade")/100))/(1+g);
+  var chips=document.getElementById("econChips");
+  chips.innerHTML=
+    '<div class="chip cocoa"><div class="k">COGS / sachet</div><div class="v">'+rupee(perSachet)+'</div></div>'
+   +'<div class="chip"><div class="k">COGS / box</div><div class="v">'+rupee(perBox)+'</div></div>'
+   +'<div class="chip cocoa"><div class="k">₹ per g protein</div><div class="v">'+rupee(perGram)+'</div></div>'
+   +'<div class="chip"><div class="k">MRP / sachet</div><div class="v">'+rupee(mrp/14)+'</div></div>';
+  var rows=[["D2C (Shopify)",d2c],["Amazon FBA",amz],["Offline retail",off]];
+  document.getElementById("econRows").innerHTML=rows.map(function(r){
+    var m=r[1]-perBox, pct=exGst>0?(m/exGst*100):0, cls=m<0?"neg":(pct>=40?"pos":"");
+    return '<tr><td>'+r[0]+'</td><td class="num">'+rupee(r[1])+'</td>'
+      +'<td class="num '+cls+'">'+rupee(m)+'</td>'
+      +'<td class="num '+cls+'">'+pct.toFixed(0)+'%</td></tr>';
+  }).join("");
+}
+econGrid.addEventListener("input",renderEcon);
+
 /* ============ STATE <-> DOM ============ */
 var state={batchN:1,base:"Milk",taster:"",ml:"",scores:{},checklist:{},notes:"",updatedAt:null};
 
@@ -398,6 +470,8 @@ function collect(){
   ATTRS.forEach(function(a){var el=document.querySelector('input[name="sc_'+a.k+'"]:checked');state.scores[a.k]=el?+el.value:null;});
   state.checklist={};
   TESTS.forEach(function(t,i){state.checklist[i]=document.getElementById("chk"+i).checked;});
+  state.econ={};
+  ECON.forEach(function(e){state.econ[e.k]=ecv(e.k);});
   return state;
 }
 function apply(s){
@@ -409,6 +483,9 @@ function apply(s){
   ATTRS.forEach(function(a){var v=(s.scores||{})[a.k];
     var el=document.querySelector('input[name="sc_'+a.k+'"][value="'+v+'"]'); if(el)el.checked=true;});
   TESTS.forEach(function(t,i){document.getElementById("chk"+i).checked=!!(s.checklist||{})[i];});
+  ECON.forEach(function(e){var v=(s.econ||{})[e.k];
+    if(v!==undefined&&v!==null)document.getElementById("ec_"+e.k).value=v;});
+  renderEcon();
   setBase(s.base||"Milk"); setBatch(s.batchN||1,false);
 }
 
@@ -436,7 +513,7 @@ function debouncedSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(save,700
 var lastSnapStr="";
 function snapshot(){
   if(!storageOK)return;
-  collect(); var str=JSON.stringify(state.scores)+state.notes+JSON.stringify(state.checklist)+state.taster+state.ml+state.base+state.batchN;
+  collect(); var str=JSON.stringify(state.scores)+state.notes+JSON.stringify(state.checklist)+state.taster+state.ml+state.base+state.batchN+JSON.stringify(state.econ);
   if(str===lastSnapStr)return;               // nothing changed — skip
   lastSnapStr=str;
   var arr=versions();
@@ -515,7 +592,7 @@ document.getElementById("btnVersions").addEventListener("click",function(){
   document.getElementById("sec-versions").scrollIntoView({behavior:"smooth",block:"start"});});
 
 /* ============ BOOT ============ */
-renderFormula(1); renderVersions();
+renderFormula(1); renderVersions(); renderEcon();
 if(storageOK){ try{var saved=JSON.parse(localStorage.getItem(STORE_KEY)); if(saved)apply(saved);}catch(e){} }
 setStatus();
 setInterval(snapshot,SNAP_MS);                       // version snapshot every 2 min
